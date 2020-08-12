@@ -33,7 +33,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class Microbench
 {
-    @Param({ "ALWAYS_SPEC", "ALWAYS_UNSAFE", "ALWAYS_INSTRUMENTATION" })
+    @Param({ "ALWAYS_SPEC", "ALWAYS_UNSAFE", "ALWAYS_INSTRUMENTATION", "ALWAYS_RUNTIME" })
     private String guess;
 
     private MemoryMeter meter;
@@ -171,6 +171,86 @@ public class Microbench
     {
         bh.consume(meter.measureDeep(cls3));
     }
+
+    @Benchmark
+    public void runtimeDeeplyNested(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        bh.consume(Runtime.deepSizeOf(deeplyNested));
+    }
+
+    @Benchmark
+    public void runtimeString(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = valString;
+        bh.consume(Runtime.deepSizeOf(o));
+    }
+
+    @Benchmark
+    public void runtimeBB(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = heapByteBuffer;
+        bh.consume(Runtime.deepSizeOf(o));
+    }
+
+    @Benchmark
+    public void runtimeCls1(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = cls1;
+        bh.consume(Runtime.deepSizeOf(o));
+    }
+
+    @Benchmark
+    public void runtimeCls2(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = cls2;
+        bh.consume(Runtime.deepSizeOf(o));
+    }
+
+    @Benchmark
+    public void runtimeCls3(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = cls3;
+        bh.consume(Runtime.deepSizeOf(o));
+    }
+
+    @Benchmark
+    public void runtimeByteArray(Blackhole bh)
+    {
+        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+            throw new RuntimeException();
+        Object o = bytes;
+        bh.consume(Runtime.sizeOf(o));
+    }
+
+    //    @Benchmark
+    //    public void runtimeLongArray(Blackhole bh)
+    //    {
+    //        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+    //            throw new RuntimeException();
+    //        Object o = longs;
+    //        bh.consume(Runtime.sizeOf(o));
+    //    }
+
+    //    @Benchmark
+    //    public void runtimeObjectArray(Blackhole bh)
+    //    {
+    //        if (meter.getGuess() != MemoryMeter.Guess.ALWAYS_RUNTIME)
+    //            throw new RuntimeException();
+    //        Object o = objects;
+    //        bh.consume(Runtime.sizeOf(o));
+    //    }
 
     //    @Benchmark
     //    public void naiveByteArray(Blackhole bh)

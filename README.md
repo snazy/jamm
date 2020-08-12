@@ -5,6 +5,34 @@ Jamm provides `MemoryMeter`, a Java agent for all Java versions to
 measure actual object memory use including JVM overhead.
 
 
+THIS IS A POC BRANCH FOR JDK/JEP-8249196 !
+==========================================
+
+Requirements:
+* Special JDK build from the `JDK-8249196-low-level-object` branch in https://hg.openjdk.java.net/jdk/sandbox/branches
+* Understand the goals of https://openjdk.java.net/jeps/8249196
+* (See also https://bugs.openjdk.java.net/browse/JDK-8249196)
+
+OpenJDK jdk-dev review thread: https://mail.openjdk.java.net/pipermail/jdk-dev/2020-August/004574.html
+
+A build of `JDK-8249196-low-level-object` is required to _build_ this branch.
+
+During development of this POC branch, a bunch of refactorings had to be applied, see the `0.4.0 notes` below.
+
+It became clear, that all interpretation of the object layout via jamm's "specification" and "unsafe" modes need
+to be considered as best effort (read: can be wrong) as it is hard to consider all potential object layouts of
+all JVMs and GCs and machine/configuration options.
+
+Jamm's "instrumentation" mode is better, because it relies on the object-size reported by the JVM. But this mode
+still needs reflection for `measureDeep()`, which is expensive and insecure and future Java versions will prevent
+these "illegal accesses" (as reported by Java > 8 with messages like `WARNING: An illegal reflective access
+operation has occurred`).
+
+The new "runtime" mode prevents all these downsides:
+* No "illegal accesses" (as there's no reflection)
+* correct object tree sizes (no guess-timates)
+
+
 Use
 ===
 
@@ -82,6 +110,50 @@ To run the microbenchmarks, execute `./gradlew microbench` and run `build/microb
 
 Some microbenchmark results
 (JVM options: `-Xms16g -Xmx16g -XX:+UseG1GC -XX:+AlwaysPreTouch`):
+
+Java 16 (from the `JDK-8249196-low-level-object` jdk-sandbox branch @ `16625b2b71f7`)
+-------------------------------------------------------------------------------------
+
+    Benchmark                                      (guess)  (nested)  (refs)  Mode  Cnt   Score    Error  Units
+    Microbench.arrayByteArray                  ALWAYS_SPEC       100       4  avgt    3   0.012 ±  0.021  us/op
+    Microbench.arrayByteArray                ALWAYS_UNSAFE       100       4  avgt    3   0.012 ±  0.020  us/op
+    Microbench.arrayByteArray       ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.012 ±  0.021  us/op
+    Microbench.arrayByteArray               ALWAYS_RUNTIME       100       4  avgt    3   0.006 ±  0.006  us/op
+    Microbench.cls1                            ALWAYS_SPEC       100       4  avgt    3   0.025 ±  0.002  us/op
+    Microbench.cls1                          ALWAYS_UNSAFE       100       4  avgt    3   0.025 ±  0.004  us/op
+    Microbench.cls1                 ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.025 ±  0.004  us/op
+    Microbench.cls1                         ALWAYS_RUNTIME       100       4  avgt    3   0.032 ±  0.013  us/op
+    Microbench.cls2                            ALWAYS_SPEC       100       4  avgt    3   0.345 ±  0.037  us/op
+    Microbench.cls2                          ALWAYS_UNSAFE       100       4  avgt    3   0.351 ±  0.030  us/op
+    Microbench.cls2                 ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.379 ±  0.055  us/op
+    Microbench.cls2                         ALWAYS_RUNTIME       100       4  avgt    3   0.335 ±  0.077  us/op
+    Microbench.cls3                            ALWAYS_SPEC       100       4  avgt    3   0.725 ±  0.026  us/op
+    Microbench.cls3                          ALWAYS_UNSAFE       100       4  avgt    3   0.738 ±  0.073  us/op
+    Microbench.cls3                 ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.754 ±  0.047  us/op
+    Microbench.cls3                         ALWAYS_RUNTIME       100       4  avgt    3   0.747 ±  0.077  us/op
+    Microbench.deeplyNested                    ALWAYS_SPEC       100       4  avgt    3  48.558 ±  4.990  us/op
+    Microbench.deeplyNested                  ALWAYS_UNSAFE       100       4  avgt    3  48.676 ±  5.895  us/op
+    Microbench.deeplyNested         ALWAYS_INSTRUMENTATION       100       4  avgt    3  48.782 ±  3.770  us/op
+    Microbench.deeplyNested                 ALWAYS_RUNTIME       100       4  avgt    3  53.761 ±  8.016  us/op
+    Microbench.justByteArray                   ALWAYS_SPEC       100       4  avgt    3   0.012 ±  0.021  us/op
+    Microbench.justByteArray                 ALWAYS_UNSAFE       100       4  avgt    3   0.012 ±  0.019  us/op
+    Microbench.justByteArray        ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.012 ±  0.020  us/op
+    Microbench.justByteArray                ALWAYS_RUNTIME       100       4  avgt    3   0.006 ±  0.006  us/op
+    Microbench.justByteBuffer                  ALWAYS_SPEC       100       4  avgt    3   0.059 ±  0.010  us/op
+    Microbench.justByteBuffer                ALWAYS_UNSAFE       100       4  avgt    3   0.059 ±  0.025  us/op
+    Microbench.justByteBuffer       ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.066 ±  0.021  us/op
+    Microbench.justByteBuffer               ALWAYS_RUNTIME       100       4  avgt    3   0.085 ±  0.027  us/op
+    Microbench.justString                      ALWAYS_SPEC       100       4  avgt    3   0.059 ±  0.015  us/op
+    Microbench.justString                    ALWAYS_UNSAFE       100       4  avgt    3   0.058 ±  0.039  us/op
+    Microbench.justString           ALWAYS_INSTRUMENTATION       100       4  avgt    3   0.062 ±  0.036  us/op
+    Microbench.justString                   ALWAYS_RUNTIME       100       4  avgt    3   0.068 ±  0.019  us/op
+    Microbench.runtimeBB                    ALWAYS_RUNTIME       100       4  avgt    3   0.073 ±  0.031  us/op
+    Microbench.runtimeByteArray             ALWAYS_RUNTIME       100       4  avgt    3   0.005 ±  0.005  us/op
+    Microbench.runtimeCls1                  ALWAYS_RUNTIME       100       4  avgt    3   0.028 ±  0.007  us/op
+    Microbench.runtimeCls2                  ALWAYS_RUNTIME       100       4  avgt    3   0.318 ±  0.069  us/op
+    Microbench.runtimeCls3                  ALWAYS_RUNTIME       100       4  avgt    3   0.651 ±  0.061  us/op
+    Microbench.runtimeDeeplyNested          ALWAYS_RUNTIME       100       4  avgt    3  50.026 ± 19.874  us/op
+    Microbench.runtimeString                ALWAYS_RUNTIME       100       4  avgt    3   0.057 ±  0.033  us/op
 
 Java 11.0.8
 -----------
@@ -174,7 +246,11 @@ _Previous_ (0.3.x) versions of jamm (w/ 8u265)
 The fine print
 ==============
 
-`MemoryMeter` can use
+MemoryMeter can use the `Runtime.deepSizeOf()` functionality added in
+Java 16, which is by far the most accurate way to measure the heap
+size occupied by an object or object-tree.
+
+Alternatively, `MemoryMeter` can use
 `java.lang.instrument.Instrumentation.getObjectSize()`, which only claims
 to provide "approximate" results, but in practice seems to work as
 expected.
@@ -202,7 +278,8 @@ stderr:
   b) there was no test coverage at all.
 * The construction of the `MemoryMeter` instance has been refactored
   to a proper builder pattern to allow distinct classes for each
-  implementation: Instrumentation, Unsafe, Specification).
+  implementation (JDK-8249196/Runtime.deepSizeOf(), Instrumentation,
+  Unsafe, Specification).
 * A bunch of internal optimizations went into the existing guess-modes
   and performance for these modes has also been _significantly_
   improved (about 10x, see microbenchmark results above).

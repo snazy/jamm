@@ -50,6 +50,8 @@ public class GuessTest {
     @Parameterized.Parameters
     public static Collection<MemoryMeter.Guess> guesses() {
         List<MemoryMeter.Guess> guesses = new ArrayList<>();
+        if (MemoryMeterRuntime.hasRuntimeSizeOf())
+            guesses.add(MemoryMeter.Guess.ALWAYS_RUNTIME);
         // Ignoring "unsafe" here, as it is extremely unreliable and often wrong:
         // Depends on both the information on j.l.r.Field and Unsafe.objectFieldOffset,
         // which just returns a "cookie" and not a meaningful value that can be used

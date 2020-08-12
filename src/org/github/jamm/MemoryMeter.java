@@ -23,6 +23,8 @@ public abstract class MemoryMeter {
             @Override
             MemoryMeter createMeter(Builder builder)
             {
+                if (MemoryMeterRuntime.hasRuntimeSizeOf())
+                    return new MemoryMeterRuntime(builder);
                 if (MemoryMeterInstrumentation.hasInstrumentation())
                     return new MemoryMeterInstrumentation(builder);
                 if (MemoryMeterUnsafe.hasUnsafe())
@@ -134,6 +136,18 @@ public abstract class MemoryMeter {
                 if (MemoryMeterInstrumentation.hasInstrumentation())
                     return new MemoryMeterInstrumentation(builder);
                 throw new IllegalStateException("Instrumentation is not set; Jamm must be set as -javaagent");
+            }
+        },
+        /**
+         * Always use JEP/JDK-8249196 (java.lang.Runtime.sizeOf())
+         */
+        ALWAYS_RUNTIME {
+            @Override
+            MemoryMeter createMeter(Builder builder)
+            {
+                if (MemoryMeterRuntime.hasRuntimeSizeOf())
+                    return new MemoryMeterRuntime(builder);
+                throw new IllegalStateException("Runtime.sizeOf() is not available");
             }
         };
 
@@ -280,6 +294,8 @@ public abstract class MemoryMeter {
          * <em>Don't use this!</em> Whether a reference is "live" or not is something that can only be
          * determined by the JVM itself. Using this mode can keep a weak/soft/phantom reference alive,
          * which is probably not intended!
+         *
+         * <em>Not implemented by the {@code Runtime.deepSizeOf()} guess-mode, but potentially by the JVM.</em>
          *
          * @deprecated Whether a reference is "live" or not is something that can only be determined by the JVM itself.
          */

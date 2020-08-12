@@ -52,6 +52,8 @@ public class MemoryMeterTest
     @Parameterized.Parameters
     public static Collection<MemoryMeter.Guess> guesses() {
         List<MemoryMeter.Guess> guesses = new ArrayList<>();
+        if (MemoryMeterRuntime.hasRuntimeSizeOf())
+            guesses.add(MemoryMeter.Guess.ALWAYS_RUNTIME);
         if (MemoryMeterInstrumentation.hasInstrumentation())
             guesses.add(MemoryMeter.Guess.ALWAYS_INSTRUMENTATION);
         if (MemoryMeterUnsafe.hasUnsafe())
@@ -484,11 +486,9 @@ public class MemoryMeterTest
 
         ByteBuffer empty = ByteBuffer.allocate(0);
         ByteBuffer one = ByteBuffer.allocate(1);
-        ByteBuffer emptyOne = one.duplicate();
-        emptyOne.position(1);
+        ByteBuffer emptyOne = one.duplicate().position(1);
         ByteBuffer b = ByteBuffer.allocate(1000);
-        ByteBuffer sl900 = b.duplicate();
-        sl900.position(100);
+        ByteBuffer sl900 = b.duplicate().position(100);
 
         MemoryMeter m1 = MemoryMeter.builder().withGuessing(guess).build();
         MemoryMeter m2 = m1.unbuild().omitSharedBufferOverhead().build();
